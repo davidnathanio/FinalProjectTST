@@ -1,27 +1,32 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel
 
-class UserSchema(BaseModel):
-    fullname: str = Field(...)
-    email: EmailStr = Field(...)
-    password: str = Field(...)
+class User(BaseModel):
+    username: str
+    name:str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserInformation:
+    username: str
+    name: str
+    coins: int
+class OrderSchema(BaseModel):
+    id: int
+    nama: str
+    alamat: str
+    sepatu: str
+    paket: str
 
     class Config:
         schema_extra = {
             "example": {
-                "fullname": "John Doe",
-                "email": "admin@domain.com",
-                "password": "12345"
-            }
-        }
-
-class UserLoginSchema(BaseModel):
-    email: EmailStr = Field(...)
-    password: str = Field(...)
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "email": "admin@domain.com",
-                "password": "12345"
+                "id" : 1,
+                "nama" : "Peter Griffin",
+                "alamat" : "Jalan Cisitu Elok No.7",
+                "sepatu" : "Nike Court Vision Low",
+                "paket" : "Reguler"
             }
         }
