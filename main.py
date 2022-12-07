@@ -29,7 +29,7 @@ app = FastAPI()
 
 @app.get("/", tags=["root"])
 async def read_root() -> dict:
-    return {"message": "Welcome aboard!"}
+    return {"message": "Selamat datang!"}
 
 
 secret_pass = config["HASH-PASS"]
@@ -82,30 +82,30 @@ async def user_login(user: UserLogin):
 
 
 
-@app.get("/users", tags=["users"])
-async def get_users() -> dict:
-    return { "data": users }
+# @app.get("/users", tags=["users"])
+# async def get_users() -> dict:
+#     return { "data": users }
 
-@app.post("/user/signup", tags=["user"]) #Without database
-async def create_user(user: UserSchema = Body(...)):
-    for u in users:
-        if (u.email == user.email):
-            raise HTTPException(status_code=400, detail="Username already taken!")
-    users.append(user)
-    return signJWT(user.email)
+# @app.post("/user/signup", tags=["user"]) #Without database
+# async def create_user(user: UserSche = Body(...)):
+#     for u in users:
+#         if (u.email == user.email):
+#             raise HTTPException(status_code=400, detail="Username already taken!")
+#     users.append(user)
+#     return signJWT(user.email)
 
-def check_user(data: UserLoginSchema):
-    for user in users:
-        if user.email == data.email and user.password == data.password:
-            return True
-    return False
+# def check_user(data: UserLoginSchema):
+#     for user in users:
+#         if user.email == data.email and user.password == data.password:
+#             return True
+#     return False
 
-@app.post("/user/login", tags=["user"])
-async def user_login(user: UserLoginSchema = Body(...)):
-    if check_user(user):
-        return signJWT(user.email)
-    else:
-        raise HTTPException(status_code=401, detail="Wrong username or password!")
+# @app.post("/user/login", tags=["user"])
+# async def user_login(user: UserLoginSchema = Body(...)):
+#     if check_user(user):
+#         return signJWT(user.email)
+#     else:
+#         raise HTTPException(status_code=401, detail="Wrong username or password!")
 
 
 
