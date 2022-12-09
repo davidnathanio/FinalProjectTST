@@ -83,7 +83,7 @@ async def get_harga() -> Dict:
         hasil[row[0]] = row[1]
     return hasil
 
-@app.put("/setlistharga", tags=["main"])
+@app.put("/setlistharga", tags=["main"], dependencies=[Depends(JWTBearer())])
 async def set_harga(pricelist: PriceList):
     data = {"paket": pricelist.paket, "harga": pricelist.harga}
     statement = text("""UPDATE hargacuci SET harga = :harga WHERE paket = :paket""")
@@ -137,7 +137,7 @@ async def add_order(order: OrderSchema):
  
 
 
-@app.get("/orderstatus",  tags=["main"])
+@app.get("/orderstatus",  tags=["main"], dependencies=[Depends(JWTBearer())])
 async def get_order():
     hasil = []
     for row in conn.execute(text("""SELECT id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim FROM orders""")):
@@ -146,15 +146,15 @@ async def get_order():
         )
     return hasil
 
+@app.get("/orderstatus/{id}", tags=["main"])
+async def get_order_id(id: int):
+    hasil = []
+    for row in conn.execute(text("""SELECT id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim FROM orders WHERE id = :id"""), {"id": id}):
+        hasil.append(
+            row
+        )
+    return hasil
 
-# @app.get("/orderstatus/{id}")
-# async def get_order(id: int):
-#     for order in order_list:
-#         print(order["id"])
-#         if id == order["id"]:
-#             return {"Order": order_list[id]}
-#     raise HTTPException(status_code=404, detail="Item not found")
-# 
 
 if __name__ == '__main__':
     uvicorn.run('main:app', host='0.0.0.0', port=8000,
