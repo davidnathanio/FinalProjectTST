@@ -7,17 +7,12 @@ import time
 from typing import Dict, List
 from dotenv import load_dotenv, dotenv_values
 
-from app.model import User, UserLogin, OrderSchema, PriceList, OrderType
+from app.model import User, UserLogin, OrderSchema, PriceList, OrderType, Status
 from app.auth_handler import signJWT
 from app.auth_bearer import JWTBearer
 from app.database import conn, config
 from app.url_handler import URLrey
 from sqlalchemy.sql import text
-
-app = FastAPI()
-users =[]
-
-
 
 app = FastAPI()
 
@@ -76,24 +71,24 @@ async def user_login(user: UserLogin):
 
 
 
-@app.get("/getlistharga", tags=["main"])
+@app.get("/getlistharga", tags=["harga"])
 async def get_harga() -> Dict:
     hasil = {}
     for row in conn.execute(text("""SELECT paket, harga FROM hargacuci """)):
         hasil[row[0]] = row[1]
     return hasil
 
-@app.put("/setlistharga", tags=["main"], dependencies=[Depends(JWTBearer())])
+@app.put("/setlistharga", tags=["harga"], dependencies=[Depends(JWTBearer())])
 async def set_harga(pricelist: PriceList):
     data = {"paket": pricelist.paket, "harga": pricelist.harga}
     statement = text("""UPDATE hargacuci SET harga = :harga WHERE paket = :paket""")
     conn.execute(statement, **data)
-    return {"Message": "Perubahan berhasil!"}
+    return {"Message": "Perubahan harga berhasil!"}
 
-@app.post("/order", tags=["main"])
+@app.post("/addorder", tags=["order"])
 async def add_order(order: OrderSchema):
-    count = 0
-    order.id = conn.execute(text('''select count (*) from orders;''')).scalar() + 1
+    #Memanggil API Rey untuk mendapatkan informasi ongkir dan waktu perjalanan
+    order.id = conn.execute(text('''select count (*) from orderCuci;''')).scalar() + 1
     data = {"jalan": order.jalan, "kota": order.kota}
     for row in conn.execute(text("""SELECT jalan, kota FROM alamat""")):
         rey = URLrey()
@@ -111,7 +106,7 @@ async def add_order(order: OrderSchema):
     
     #Mendapatkan Harga
     harga = {}
-    for row in conn.execute(text("""SELECT paket, harga FROM hargacuci """)):
+    for row in conn.execute(text("""SELECT paket, harga FROM hargacuci""")):
         harga[row[0]] = row[1]
     if order.paket == OrderType.reguler:
         hargacuci = harga['reguler']
@@ -122,11 +117,10 @@ async def add_order(order: OrderSchema):
     if order.paket == OrderType.repaint:
         hargacuci = harga['repaint']
 
-
-
+    #Memasukkan ke Database
     final = hasil.json()
-    data = {"id": order.id, "nama": order.nama, "jalan": order.jalan, "kota": order.kota, "sepatu": order.sepatu, "warna": order.warna, "paket": order.paket, "harga": hargacuci, "ongkir": final['priceRupiah'], "waktuCuciMenit": waktu_cuci, "waktu_kirim": final['drivingTimeSeconds'], }
-    statement = text("""INSERT INTO orders(id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim) VALUES(:id, :nama, :jalan, :kota, :sepatu, :warna, :paket, :harga, :ongkir, :waktuCuciMenit, :waktu_kirim)""")
+    data = {"id": order.id, "nama": order.nama, "jalan": order.jalan, "kota": order.kota, "sepatu": order.sepatu, "warna": order.warna, "paket": order.paket, "hargacuci": hargacuci, "ongkir": final['priceRupiah'], "waktuCuciMenit": waktu_cuci, "waktuKirimDetik": final['drivingTimeSeconds'], "status": order.status }
+    statement = text("""INSERT INTO orderCuci(id, nama, jalan, kota, sepatu, warna, paket, hargacuci, ongkir, waktuCuciMenit, waktuKirimDetik, status) VALUES(:id, :nama, :jalan, :kota, :sepatu, :warna, :paket, :hargacuci, :ongkir, :waktuCuciMenit, :waktuKirimDetik, :status)""")
     conn.execute(statement, **data)
     
     return {
@@ -134,26 +128,30 @@ async def add_order(order: OrderSchema):
         "ID Pesanan" : order.id,
         }
 
- 
-
-
-@app.get("/orderstatus",  tags=["main"], dependencies=[Depends(JWTBearer())])
+@app.get("/orderstatus",  tags=["order"], dependencies=[Depends(JWTBearer())])
 async def get_order():
     hasil = []
-    for row in conn.execute(text("""SELECT id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim FROM orders""")):
+    for row in conn.execute(text("""SELECT * FROM orderCuci""")):
         hasil.append(
             row
         )
     return hasil
 
-@app.get("/orderstatus/{id}", tags=["main"])
+@app.get("/orderstatus/{id}", tags=["order"])
 async def get_order_id(id: int):
     hasil = []
-    for row in conn.execute(text("""SELECT id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim FROM orders WHERE id = :id"""), {"id": id}):
+    for row in conn.execute(text("""SELECT * FROM orderCuci WHERE id = :id"""), {"id": id}):
         hasil.append(
             row
         )
     return hasil
+
+@app.put("/changestatus", tags=["order"])
+async def change_status(status: Status):
+    data = {"id": status.id, "status": status.status}
+    statement = text("""UPDATE orderCuci SET status = :status WHERE id = :id""")
+    conn.execute(statement, **data)
+    return {"Message": "Perubahan status berhasil!"}
 
 
 if __name__ == '__main__':

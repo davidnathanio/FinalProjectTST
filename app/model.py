@@ -26,6 +26,9 @@ class PriceList(BaseModel):
     paket: str
     harga: int
 
+class Status(BaseModel):
+    id: int
+    status: str
    
 class OrderSchema(BaseModel):
     id: Optional[int] = 0
@@ -35,6 +38,7 @@ class OrderSchema(BaseModel):
     sepatu: str
     warna: str
     paket: OrderType
+    status: Optional[str] = "Dalam proses"
 
     class Config:
         schema_extra = {

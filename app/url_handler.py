@@ -20,5 +20,5 @@ class URLrey():
             },
         }
 
-        response = requests.post('http://128.199.149.182/event/get-price', headers=headers, json=json_data)
+        response = requests.post('http://128.199.149.182/shoetify/order-shoetify', headers=headers, json=json_data)
         return response

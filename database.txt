@@ -1,0 +1,14 @@
+CREATE TABLE orderCuci (
+  id INTEGER PRIMARY KEY,
+  nama VARCHAR(50),
+  jalan VARCHAR(100),
+  kota VARCHAR(30),
+  sepatu VARCHAR(50),
+  warna VARCHAR (20),
+  paket VARCHAR (20),
+  hargacuci INT,
+  ongkir INT,
+  waktuCuciMenit INT,
+  waktuKirimDetik INT,
+  status VARCHAR(30)
+);
