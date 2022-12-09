@@ -119,8 +119,8 @@ async def add_order(order: OrderSchema):
 
     #Memasukkan ke Database
     final = hasil.json()
-    data = {"id": order.id, "nama": order.nama, "jalan": order.jalan, "kota": order.kota, "sepatu": order.sepatu, "warna": order.warna, "paket": order.paket, "hargacuci": hargacuci, "ongkir": final['priceRupiah'], "waktuCuciMenit": waktu_cuci, "waktuKirimDetik": final['drivingTimeSeconds'], "status": order.status }
-    statement = text("""INSERT INTO orderCuci(id, nama, jalan, kota, sepatu, warna, paket, hargacuci, ongkir, waktuCuciMenit, waktuKirimDetik, status) VALUES(:id, :nama, :jalan, :kota, :sepatu, :warna, :paket, :hargacuci, :ongkir, :waktuCuciMenit, :waktuKirimDetik, :status)""")
+    data = {"id": order.id, "nama": order.nama, "notelp" : order.notelp, "jalan": order.jalan, "kota": order.kota, "sepatu": order.sepatu, "warna": order.warna, "paket": order.paket, "hargacuci": hargacuci, "ongkir": final['priceRupiah'], "waktuCuciMenit": waktu_cuci, "waktuKirimDetik": final['drivingTimeSeconds'], "status": order.status }
+    statement = text("""INSERT INTO orderCuci(id, nama, notelp, jalan, kota, sepatu, warna, paket, hargacuci, ongkir, waktuCuciMenit, waktuKirimDetik, status) VALUES(:id, :nama, :notelp, :jalan, :kota, :sepatu, :warna, :paket, :hargacuci, :ongkir, :waktuCuciMenit, :waktuKirimDetik, :status)""")
     conn.execute(statement, **data)
     
     return {
@@ -140,7 +140,7 @@ async def get_order():
 @app.get("/orderstatus/{id}", tags=["order"])
 async def get_order_id(id: int):
     hasil = []
-    for row in conn.execute(text("""SELECT * FROM orderCuci WHERE id = :id"""), {"id": id}):
+    for row in conn.execute(text("""SELECT *, SUM(hargacuci + ongkir) as biayaTotal FROM orderCuci WHERE id = :id"""), {"id": id}):
         hasil.append(
             row
         )
@@ -152,6 +152,15 @@ async def change_status(status: Status):
     statement = text("""UPDATE orderCuci SET status = :status WHERE id = :id""")
     conn.execute(statement, **data)
     return {"Message": "Perubahan status berhasil!"}
+
+@app.get("/order_identity", tags=["misc"])
+async def get_order_identity():
+    hasil = []
+    for row in conn.execute(text("""SELECT nama, notelp FROM orderCuci""")):
+        hasil.append(
+            row
+        )
+    return hasil
 
 
 if __name__ == '__main__':

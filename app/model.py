@@ -33,6 +33,7 @@ class Status(BaseModel):
 class OrderSchema(BaseModel):
     id: Optional[int] = 0
     nama: str
+    notelp: str
     jalan: str
     kota: str
     sepatu: str
@@ -42,8 +43,9 @@ class OrderSchema(BaseModel):
 
     class Config:
         schema_extra = {
-            "contoh input": {
+            "example": {
                 "nama" : "Peter Griffin",
+                "notelp" : "081234551910",
                 "jalan" : "Jalan Cisitu Indah VI",
                 "kota" : "Bandung",
                 "sepatu" : "Nike Court Vision Low",

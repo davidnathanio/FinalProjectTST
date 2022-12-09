@@ -1,6 +1,7 @@
 CREATE TABLE orderCuci (
   id INTEGER PRIMARY KEY,
   nama VARCHAR(50),
+  notelp VARCHAR(20),
   jalan VARCHAR(100),
   kota VARCHAR(30),
   sepatu VARCHAR(50),
