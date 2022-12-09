@@ -139,9 +139,11 @@ async def add_order(order: OrderSchema):
 
 @app.get("/orderstatus",  tags=["main"])
 async def get_order():
-    hasil = {}
-    for row in conn.execute(text("""SELECT id, nama, jalan, kota FROM orders""")):
-        hasil[row[0]] = row[1]
+    hasil = []
+    for row in conn.execute(text("""SELECT id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim FROM orders""")):
+        hasil.append(
+            row
+        )
     return hasil
 
 
