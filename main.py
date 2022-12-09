@@ -92,7 +92,7 @@ async def add_order(order: OrderSchema):
     data = {"jalan": order.jalan, "kota": order.kota}
     for row in conn.execute(text("""SELECT jalan, kota FROM alamat""")):
         rey = URLrey()
-        hasil = rey.getReyHarga("Jalan Dago Asri No.6", "Bandung", order.jalan, order.kota)
+        hasil = rey.getReyHarga("Jalan Dago Asri No.6", "Bandung", order.nama, order.jalan, order.kota)
 
     #Penentuan Waktu Cuci
     if order.paket == OrderType.reguler:
@@ -156,7 +156,7 @@ async def change_status(status: Status):
 @app.get("/order_identity", tags=["misc"])
 async def get_order_identity():
     hasil = []
-    for row in conn.execute(text("""SELECT nama, notelp FROM orderCuci""")):
+    for row in conn.execute(text("""SELECT DISTICT nama, notelp FROM orderCuci""")):
         hasil.append(
             row
         )
