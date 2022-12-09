@@ -1,19 +1,17 @@
 import uvicorn
 import bcrypt
 from fastapi import FastAPI, Body, Depends, HTTPException
-from pydantic import BaseModel
 from fastapi import HTTPException
-from enum import Enum
 
 import time
 from typing import Dict, List
 from dotenv import load_dotenv, dotenv_values
-import jwt
 
-from app.model import User, UserLogin, OrderSchema, OrderType
+from app.model import User, UserLogin, OrderSchema, PriceList, OrderType
 from app.auth_handler import signJWT
 from app.auth_bearer import JWTBearer
 from app.database import conn, config
+from app.url_handler import URLrey
 from sqlalchemy.sql import text
 
 app = FastAPI()
@@ -35,25 +33,25 @@ def hash_password(password) -> str:
 
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: User):
-    if (len(user.username) < 5 or len(user.username) > 16):
-        raise HTTPException(status_code=500, detail="username does not fulfill the requirements")
+    if (len(user.username) < 4):
+        raise HTTPException(status_code=500, detail="username minimal 4 karakter")
         return
-    if (len(user.password) < 8 or len(user.password) > 25):
-        raise HTTPException(status_code=500, detail="Password does not fulfill the requirements")
+    if (len(user.password) < 8):
+        raise HTTPException(status_code=500, detail="Password minimal 8 karakter")
         return
-    data = {"username": user.username, "password": hash_password(user.password), "name": user.name, "coins":1000}
-    statement = text("""INSERT INTO users(username,password,name, coins) VALUES(:username, :password, :name, :coins)""")
+    data = {"username": user.username, "password": hash_password(user.password), "name": user.name}
+    statement = text("""INSERT INTO users(username, password, fullName) VALUES(:username, :password, :name)""")
+    conn.execute(statement, **data)
     try:
-        conn.execute(statement, **data)
         for row in conn.execute(text("SELECT id from users where username=:username"),{"username": user.username}):
             return {
                 "username": user.username,
                 "id": row[0],
                 "token": signJWT(row[0], user.username)
             }
-        raise HTTPException(status_code=600, detail="Internal Server Error")
+        raise HTTPException(status_code=600, detail="Pilih username lain!")
     except:
-        raise HTTPException(status_code=505, detail="Username not unique")
+        raise HTTPException(status_code=505, detail="Signup Error")
 
 def validate_password(password, hashed) -> bool:
         return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
@@ -77,33 +75,74 @@ async def user_login(user: UserLogin):
     raise HTTPException(status_code=404, detail="User Not Found")
 
 
-order_list = []
-price_list = [40000,60000,80000,110000]
 
+@app.get("/getlistharga", tags=["main"])
+async def get_harga() -> Dict:
+    hasil = {}
+    for row in conn.execute(text("""SELECT paket, harga FROM hargacuci """)):
+        hasil[row[0]] = row[1]
+    return hasil
 
-@app.post("/price_list")
-async def change_price(price: List[int]):
-    for i in range (4):
-        price_list[i] = price[i]
-    return
-
-@app.get("/price_list")
-async def get_price():
-    return {"Price List": price_list}
+@app.put("/setlistharga", tags=["main"])
+async def set_harga(pricelist: PriceList):
+    data = {"paket": pricelist.paket, "harga": pricelist.harga}
+    statement = text("""UPDATE hargacuci SET harga = :harga WHERE paket = :paket""")
+    conn.execute(statement, **data)
+    return {"Message": "Perubahan berhasil!"}
 
 @app.post("/order", tags=["main"])
 async def add_order(order: OrderSchema):
-    order.id = len(order_list) + 1
-    order_list.append(order)
+    count = 0
+    order.id = conn.execute(text('''select count (*) from orders;''')).scalar() + 1
+    data = {"jalan": order.jalan, "kota": order.kota}
+    for row in conn.execute(text("""SELECT jalan, kota FROM alamat""")):
+        rey = URLrey()
+        hasil = rey.getReyHarga("Jalan Dago Asri No.6", "Bandung", order.jalan, order.kota)
+
+    #Penentuan Waktu Cuci
+    if order.paket == OrderType.reguler:
+        waktu_cuci = 60
+    if order.paket == OrderType.deepclean:
+        waktu_cuci = 120
+    if order.paket == OrderType.unyellowing:
+        waktu_cuci = 150
+    if order.paket == OrderType.repaint:
+        waktu_cuci = 210
+    
+    #Mendapatkan Harga
+    harga = {}
+    for row in conn.execute(text("""SELECT paket, harga FROM hargacuci """)):
+        harga[row[0]] = row[1]
+    if order.paket == OrderType.reguler:
+        hargacuci = harga['reguler']
+    if order.paket == OrderType.deepclean:
+        hargacuci = harga['deepclean']
+    if order.paket == OrderType.unyellowing:
+        hargacuci = harga['unyellowing']
+    if order.paket == OrderType.repaint:
+        hargacuci = harga['repaint']
+
+
+
+    final = hasil.json()
+    data = {"id": order.id, "nama": order.nama, "jalan": order.jalan, "kota": order.kota, "sepatu": order.sepatu, "warna": order.warna, "paket": order.paket, "harga": hargacuci, "ongkir": final['priceRupiah'], "waktuCuciMenit": waktu_cuci, "waktu_kirim": final['drivingTimeSeconds'], }
+    statement = text("""INSERT INTO orders(id, nama, jalan, kota, sepatu, warna, paket, harga, ongkir, waktuCuciMenit, waktu_kirim) VALUES(:id, :nama, :jalan, :kota, :sepatu, :warna, :paket, :harga, :ongkir, :waktuCuciMenit, :waktu_kirim)""")
+    conn.execute(statement, **data)
+    
     return {
-        "Message": "Order berhasil dilakukan",
-        "order_id": order.id
+        "Message" : "Pesanan berhasil!",
+        "ID Pesanan" : order.id,
         }
 
-@app.get("/orderstatus", dependencies=[Depends(JWTBearer())], tags=["main"])
+ 
+
+
+@app.get("/orderstatus",  tags=["main"])
 async def get_order():
-    
-    return {"Order": order_list}
+    hasil = {}
+    for row in conn.execute(text("""SELECT id, nama, jalan, kota FROM orders""")):
+        hasil[row[0]] = row[1]
+    return hasil
 
 
 # @app.get("/orderstatus/{id}")

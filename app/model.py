@@ -21,12 +21,17 @@ class OrderType(str, Enum):
     deepclean = "Deep Clean" 
     unyellowing = "Unyellowing"
     repaint = "Repaint"
-   
 
+class PriceList(BaseModel):
+    paket: str
+    harga: int
+
+   
 class OrderSchema(BaseModel):
     id: Optional[int] = 0
     nama: str
-    alamat: str
+    jalan: str
+    kota: str
     sepatu: str
     warna: str
     paket: OrderType
@@ -35,7 +40,8 @@ class OrderSchema(BaseModel):
         schema_extra = {
             "contoh input": {
                 "nama" : "Peter Griffin",
-                "alamat" : "Jalan Cisitu Elok No.7",
+                "jalan" : "Jalan Cisitu Indah VI",
+                "kota" : "Bandung",
                 "sepatu" : "Nike Court Vision Low",
                 "warna" : "Putih Biru",
                 "paket" : "Reguler"
