@@ -2,6 +2,7 @@ import uvicorn
 import bcrypt
 from fastapi import FastAPI, Body, Depends, HTTPException
 from fastapi import HTTPException
+from sqlalchemy import exc
 
 import time
 from typing import Dict, List
@@ -29,22 +30,21 @@ def hash_password(password) -> str:
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: User):
     if (len(user.username) < 4):
-        raise HTTPException(status_code=500, detail="username minimal 4 karakter")
-        return
+        raise HTTPException(status_code=400, detail="username minimal 4 karakter")
     if (len(user.password) < 8):
-        raise HTTPException(status_code=500, detail="Password minimal 8 karakter")
-        return
-    data = {"username": user.username, "password": hash_password(user.password), "name": user.name}
-    statement = text("""INSERT INTO users(username, password, fullName) VALUES(:username, :password, :name)""")
-    conn.execute(statement, **data)
-    try:
+        raise HTTPException(status_code=400, detail="Password minimal 8 karakter")
+    try:   
+        data = {"username": user.username, "password": hash_password(user.password), "name": user.name}
+        statement = text("""INSERT INTO users(username, password, fullName) VALUES(:username, :password, :name)""")
+        conn.execute(statement, **data)
         for row in conn.execute(text("SELECT id from users where username=:username"),{"username": user.username}):
             return {
                 "username": user.username,
                 "id": row[0],
                 "token": signJWT(row[0], user.username)
             }
-        raise HTTPException(status_code=600, detail="Pilih username lain!")
+    except exc.IntegrityError: 
+        raise HTTPException(status_code=400, detail="Username sudah ada, silahkan pakai username lain!")
     except:
         raise HTTPException(status_code=505, detail="Signup Error")
 
@@ -57,17 +57,15 @@ async def user_login(user: UserLogin):
     try :
         result = conn.execute(query, {"uname": user.username})
         for row in result:
-            print(result)
             if row[1] == user.username and validate_password(password=user.password, hashed=row[2]):
                 return {
                     "username": user.username,
                     "id": row[0],
                     "token": signJWT(row[0], user.username),
                 }
-        print(result)
     except:
         print("error")
-    raise HTTPException(status_code=404, detail="User Not Found")
+    raise HTTPException(status_code=404, detail="Username atau password salah!")
 
 
 
@@ -80,10 +78,13 @@ async def get_harga() -> Dict:
 
 @app.put("/setlistharga", tags=["harga"], dependencies=[Depends(JWTBearer())])
 async def set_harga(pricelist: PriceList):
-    data = {"paket": pricelist.paket, "harga": pricelist.harga}
-    statement = text("""UPDATE hargacuci SET harga = :harga WHERE paket = :paket""")
-    conn.execute(statement, **data)
-    return {"Message": "Perubahan harga berhasil!"}
+    if (pricelist.paket == "Reguler" or pricelist.paket == "Deep Clean" or pricelist.paket == "Unyellowing" or pricelist.paket == "Repaint"):
+        data = {"paket": pricelist.paket, "harga": pricelist.harga}
+        statement = text("""UPDATE hargacuci SET harga = :harga WHERE paket = :paket""")
+        conn.execute(statement, **data)
+        return {"Message": "Perubahan harga berhasil!"}
+    else:
+        raise HTTPException (status_code=400, detail="Paket tidak sesuai!")
 
 @app.post("/addorder", tags=["order"])
 async def add_order(order: OrderSchema):
@@ -97,11 +98,11 @@ async def add_order(order: OrderSchema):
     #Penentuan Waktu Cuci
     if order.paket == OrderType.reguler:
         waktu_cuci = 60
-    if order.paket == OrderType.deepclean:
+    elif order.paket == OrderType.deepclean:
         waktu_cuci = 120
-    if order.paket == OrderType.unyellowing:
+    elif order.paket == OrderType.unyellowing:
         waktu_cuci = 150
-    if order.paket == OrderType.repaint:
+    elif order.paket == OrderType.repaint:
         waktu_cuci = 210
     
     #Mendapatkan Harga
@@ -110,12 +111,13 @@ async def add_order(order: OrderSchema):
         harga[row[0]] = row[1]
     if order.paket == OrderType.reguler:
         hargacuci = harga['reguler']
-    if order.paket == OrderType.deepclean:
+    elif order.paket == OrderType.deepclean:
         hargacuci = harga['deepclean']
-    if order.paket == OrderType.unyellowing:
+    elif order.paket == OrderType.unyellowing:
         hargacuci = harga['unyellowing']
-    if order.paket == OrderType.repaint:
+    elif order.paket == OrderType.repaint:
         hargacuci = harga['repaint']
+    
 
     #Memasukkan ke Database
     final = hasil.json()
@@ -148,10 +150,16 @@ async def get_order_id(id: int):
 
 @app.put("/changestatus", tags=["order"])
 async def change_status(status: Status):
-    data = {"id": status.id, "status": status.status}
-    statement = text("""UPDATE orderCuci SET status = :status WHERE id = :id""")
-    conn.execute(statement, **data)
-    return {"Message": "Perubahan status berhasil!"}
+    try:
+        data = {"id": status.id, "status": status.status}
+        statement = text("""UPDATE orderCuci SET status = :status WHERE id = :id""")
+        result= conn.execute(statement, **data)
+        if result.rowcount < 1:
+            raise HTTPException (status_code=400, detail="ID tidak sesuai!")
+        return {"Message": "Perubahan status berhasil!"}
+    except:
+        raise HTTPException (status_code=400, detail="ID tidak sesuai!")
+
 
 @app.get("/order_identity", tags=["misc"])
 async def get_order_identity():
